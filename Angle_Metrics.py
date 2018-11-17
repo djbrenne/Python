@@ -104,17 +104,22 @@ def getend(df):
         return len(df)
 
 #fills in NaN data with interpolated values
-#def linearfill(column):
-#        for i in range(len(column)):
-#                value = column[i]
-#                if i == 0: #don't interpolate the first value
-#                        new_value = value
-#                elif i == len(column) - 1: # don't interpolate the last value
-#                        new_value = value
-#                #elif np.isnan(value):
-#                       #print("NaN Found")
-#                else:
-#                        print(value)
+def linearfill(column):
+        for i in range(len(column)):
+                value = column[i+1]                
+                if i == 0: #don't interpolate the first value
+                        new_value = value
+                elif i == len(column) - 1: # don't interpolate the last value
+                        new_value = value
+                elif np.isnan(value):
+                        j = 1
+                        while np.isnan(column[i+j]) and i + j <= len(column): #look ahead until you see real data or the end of the column
+                                j = j + 1
+                        new_value = (column[i+j]-column[i]) / (j+1) + column[i] #linear interpolation, knowing everything behind has already been filled                       
+                else:
+                        new_value = value
+                column[i+1] = new_value
+        return column
 
 
 
@@ -148,7 +153,7 @@ for ppt in ["00"]:#, "35", "42", "45", "53", "80", "96"]:
                 for i in range(len(joint_names)):
                         #filter the column
                         trimmedcolumn = trim(trialstart,trialend,columnread(joint_names[i]))
-#                        linearfill(trimmedcolumn)
+                        trimmedcolumn = linearfill(trimmedcolumn)
                         t = np.linspace(0, len(trimmedcolumn),len(trimmedcolumn))
                         #get the data all into a single line
                         dataline = getdataline(task,intervention,joint_names[i],metrics(trimmedcolumn))

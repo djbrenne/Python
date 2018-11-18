@@ -7,7 +7,6 @@ Created on Fri Nov 16 2018
 #Imports
 import os
 import csv
-import pandas as pd
 import numpy as np
 from scipy.signal import butter, lfilter, freqz
 import matplotlib.pyplot as plt
@@ -20,13 +19,40 @@ current_dir = ""
 ProParticipant = "Pro00077893-03-18-1"
 dir_list = []
 joint_names = ["K:Cluster:TrunkFE"]#, "K:Cluster:TrunkLatBend", "K:Cluster:TrunkAxRot", "K:Cluster:PrmryShoFE", "K:Cluster:PrmryShoAbAd", "K:Cluster:PrmryShoIERot"]
+column_names = ["M:RHND:RHND1:X","M:RHND:RHND1:Y","M:RHND:RHND1:Z","K:Cluster:TrunkFE", "K:Cluster:TrunkLatBend", "K:Cluster:TrunkAxRot", "K:Cluster:PrmryShoFE", "K:Cluster:PrmryShoAbAd", "K:Cluster:PrmryShoIERot"]
 # Sample rate and desired cutoff frequencies (in Hz).
 fs = 120.0
 highcut = 10.0
 
+#Saves all the important columns in the .csv file
+def getcolumns(name):
+        with open(current_dir + "/" + trial, "rb") as csvfile:
+                reader = csv.reader(csvfile,delimiter = ",")
+                col_numbers = getcolumnnums(reader) #read the first line only; get the important column numbers from the header
+                data_dict = {}
+                for item in column_names: #initialize a dictionary with keys being the column header names
+                        data_dict[item] = [] 
+                for row in reader: #run through the .csv saving the important column information in the dictionary
+                        i = 0
+                        for item in column_names:
+                                data_dict[item].append(float(row[col_numbers[i]]))
+                                i = i+1
+                return data_dict
+
+#Gets the column number of the important columns
+def getcolumnnums(reader):
+        for row in reader:
+                importantcols = []
+                for i in range(len(row)):
+                        for name in column_names:
+                                if row[i] == name:
+                                        importantcols.append(i)
+                return importantcols
+
+
 #This function returns the data only from the column of the specified header
 def columnread(header):
-        return df[header]
+        return reader[header]
 
 #This function returns the metrics of the joint angles in a list [max,min,range,mean,median]. Strings, rounded to 4 decimal places.
 def metrics(joint_angles):
@@ -98,29 +124,29 @@ def writetocsv(Savedir,participant,data):
                 writefile.write("\n" + datastring)
 
 #determines the start of the trial based on hand velocity
-def getstart():
-        return 1 #use the whole trial for now
+def getstart(data_dict):
+        return 50 #past the filter settling time
 
 #determines the end of the trial based on something else
-def getend(df):
-        return len(df) #use the whole trial for now
+def getend(data_dict):
+        return len(data_dict['M:RHND:RHND1:X']) #use the whole trial for now
 
 #fills in NaN data with interpolated values
 def linearfill(column):
         for i in range(len(column)):
-                value = column[i+1]                
+                value = column[i]                
                 if i == 0: #don't interpolate the first value
                         new_value = value
                 elif i == len(column) - 1: # don't interpolate the last value
                         new_value = value
                 elif np.isnan(value):
-                        j = 1
+                        j = 1 
                         while np.isnan(column[i+j]) and i + j <= len(column): #look ahead until you see real data or the end of the column
                                 j = j + 1
-                        new_value = (column[i+j]-column[i]) / (j+1) + column[i] #linear interpolation, knowing everything behind has already been filled                   
+                        new_value = (column[i+j]-column[i-1]) / (j+1) + column[i-1] #linear interpolation, knowing everything behind has already been filled                   
                 else:
                         new_value = value
-                column[i+1] = new_value
+                column[i] = new_value
         return column
 
 
@@ -137,9 +163,8 @@ for ppt in ["00"]:#, "35", "42", "45", "53", "80", "96"]:
 
         #for each trial in the participant folder
         for trial in dir_list:
-                #read the file into df
-                df = pd.read_csv(current_dir + "/" + trial) 
-                
+                #read the file, saving only the pertinent columns
+                data_dict = getcolumns(current_dir + "/" + trial)                               
                 #determine the task type of the trial
                 task = gettask(trial)
                 #determine the intervention (AL, SS, FW) of the trial
@@ -147,23 +172,22 @@ for ppt in ["00"]:#, "35", "42", "45", "53", "80", "96"]:
                 #filter the data
 
                 #find the row of trial start
-                trialstart = getstart()
+                trialstart = getstart(data_dict)
                 #find the row of trial end
-                trialend = getend(df) 
+                trialend = getend(data_dict) 
                 
                 #for each joint angle type, get the metrics and write to a single line
                 for i in range(len(joint_names)):
                         #read the column for the joint angle 
-                        column = read(joint_names[i])
+                        #column = read(joint_names[i])
                         #fill the column, removing NaNs
-                        filledcolumn = linearfill(column)
+                        filledcolumn = linearfill(data_dict[joint_names[i]])
                         #filter the column
                         filteredcolumn = butter_lowpass_filter(filledcolumn, highcut, fs, order = 6)
                         #trim the column for trial data only
                         trimmedcolumn = trim(trialstart,trialend,filteredcolumn)
                         #get the metrics from the column
-                        measures = metrics(trimmedcolumn)
-                        t = np.linspace(0, len(trimmedcolumn),len(trimmedcolumn))
+                        measures = metrics(trimmedcolumn)                        
                         #get the data all into a single line
                         dataline = getdataline(task,intervention,joint_names[i],measures)
                         #print to .csv
@@ -184,14 +208,15 @@ for ppt in ["00"]:#, "35", "42", "45", "53", "80", "96"]:
         plt.grid(True)
         plt.legend(loc='best')
 
-        #Plot the data being filtered as raw
+        
         plt.figure(2)
         plt.clf()
-        plt.plot(t, trimmedcolumn, label='Raw data')
-        #filter the data
-        filteredcolumn = butter_lowpass_filter(trimmedcolumn, highcut, fs, order=3)
+        #Plot the data being filtered as raw
+        t_raw = np.linspace(0, len(filledcolumn),len(filledcolumn))
+        plt.plot(t_raw, filledcolumn, label='Raw data')
         #plot filtered data
-        plt.plot(t, filteredcolumn, label='Filtered signal')
+        t_flt = np.linspace(0, len(trimmedcolumn),len(trimmedcolumn))
+        plt.plot(t_flt, trimmedcolumn, label='Filtered signal')
         plt.xlabel('time (seconds)')
         plt.grid(True)
         plt.axis('tight')

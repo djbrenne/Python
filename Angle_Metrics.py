@@ -248,7 +248,7 @@ def linearfill(column):
 
 #MAIN LOOP
 #Loop through the directories for the participants we care about
-for ppt in ["00"]:#35", "42", "45", "53", "80", "96"]:
+for ppt in ["95"]:#"35", "42", "45", "53", "80", "96"
         participant = ProParticipant + ppt
         current_dir = directory + ppt
         Bento_current_dir = Bento_directory + ppt
@@ -312,22 +312,22 @@ for ppt in ["00"]:#35", "42", "45", "53", "80", "96"]:
                         writetocsv(Savedir,participant,dataline)
                         
                         #plot the hand velocity for each trial, and save to .png
-                        plt.figure(1)
-                        plt.clf()
-                        t = np.linspace(0, len(grippervel), len(grippervel))
-                        plt.plot(t, grippervel, label = 'Gripper Velocity')
-                        t_jointangle = np.linspace(0, len(convertedcolumn), len(convertedcolumn))
-                        plt.plot(t_jointangle, convertedcolumn, label = 'Joint Angle')
-                        t_raw = np.linspace(0,len(Bento_data_dict[Bento_joint_names[i]]), len(Bento_data_dict[Bento_joint_names[i]]))
-                        plt.plot(t_raw, Bento_data_dict[Bento_joint_names[i]], label = "Raw")
-                        plt.title(trial)
-                        plt.ylabel('Velocity (mm/s)')
-                        plt.xlabel('Timestep')
-                        plt.grid(True)
-                        plt.axis('tight')
-                        plt.legend(loc = 'best')
-                        plt.savefig(Savedir + "Hand Velocity test Figures/" + trial + ".png")
-                        plt.show()
+                        #plt.figure(1)
+                        #plt.clf()
+                        #t = np.linspace(0, len(grippervel), len(grippervel))
+                        #plt.plot(t, grippervel, label = 'Gripper Velocity')
+                        #t_jointangle = np.linspace(0, len(convertedcolumn), len(convertedcolumn))
+                        #plt.plot(t_jointangle, convertedcolumn, label = 'Joint Angle')
+                        #t_raw = np.linspace(0,len(Bento_data_dict[Bento_joint_names[i]]), len(Bento_data_dict[Bento_joint_names[i]]))
+                        #plt.plot(t_raw, Bento_data_dict[Bento_joint_names[i]], label = "Raw")
+                        #plt.title(trial)
+                        #plt.ylabel('Velocity (mm/s)')
+                        #plt.xlabel('Timestep')
+                        #plt.grid(True)
+                        #plt.axis('tight')
+                        #plt.legend(loc = 'best')
+                        #plt.savefig(Savedir + "Hand Velocity test Figures/" + trial + ".png")
+                        #plt.show()
                 
                 #trial_length = [str(trialend - trialstart),str(triggervel)]
                 #writetocsv(Savedir,participant,trial_length)
